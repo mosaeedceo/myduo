@@ -6990,41 +6990,38 @@ var CdvPurchase;
     CdvPurchase.VerifiedReceipt = VerifiedReceipt;
 })(CdvPurchase || (CdvPurchase = {}));
 
-// Stub: make all products appear owned and skip native adapter initialization
+// Stub: make all products appear owned and purchase flow succeed immediately
 (function patchCdvPurchaseStore() {
-    function applyPatch() {
-        var store = window.CdvPurchase && window.CdvPurchase.store;
+    function patchStore(store) {
         if (!store || store.__patched) return;
         store.__patched = true;
 
-        // Override initialize to skip native adapters and immediately signal ready
-        store.initialize = function (platforms) {
-            try { store._readyCallbacks && store._readyCallbacks.trigger && store._readyCallbacks.trigger('stub'); } catch (e) {}
-            try { store.receiptsReadyCallbacks && store.receiptsReadyCallbacks.trigger && store.receiptsReadyCallbacks.trigger(); } catch (e) {}
-            try { store.receiptsVerifiedCallbacks && store.receiptsVerifiedCallbacks.trigger && store.receiptsVerifiedCallbacks.trigger(); } catch (e) {}
+        // Skip native adapter initialization and signal ready immediately
+        store.initialize = function () {
+            if (store._readyCallbacks && store._readyCallbacks.trigger) store._readyCallbacks.trigger('stub');
+            if (store.receiptsReadyCallbacks && store.receiptsReadyCallbacks.trigger) store.receiptsReadyCallbacks.trigger();
+            if (store.receiptsVerifiedCallbacks && store.receiptsVerifiedCallbacks.trigger) store.receiptsVerifiedCallbacks.trigger();
             return Promise.resolve([]);
         };
 
-        // All products appear owned
+        // All products appear owned and active
         store.owned = function () { return true; };
 
-        // Allow purchase flow — resolve immediately as if purchase succeeded
+        // Purchase flow resolves successfully as if purchase completed
         store.canPurchase = function () { return true; };
         store.order = function (offer) {
-            var mockTransaction = {
+            var mockTxn = {
                 transactionId: 'mock-txn-' + Date.now(),
                 state: 'approved',
                 products: [{ id: (offer && offer.id) || 'com.duocards.premium', quantity: 1 }],
                 finish: function () { return Promise.resolve(); }
             };
-            try {
-                store.receiptsVerifiedCallbacks && store.receiptsVerifiedCallbacks.trigger && store.receiptsVerifiedCallbacks.trigger();
-            } catch (e) {}
-            return Promise.resolve(mockTransaction);
+            if (store.receiptsVerifiedCallbacks && store.receiptsVerifiedCallbacks.trigger) store.receiptsVerifiedCallbacks.trigger();
+            return Promise.resolve(mockTxn);
         };
         store.finish = function () { return Promise.resolve(); };
 
-        // Patch store.get to set owned on returned products
+        // Products returned by store.get() also appear owned
         var _origGet = store.get;
         store.get = function (id, platform) {
             var p = _origGet ? _origGet.call(store, id, platform) : undefined;
@@ -7035,10 +7032,13 @@ var CdvPurchase;
         };
     }
 
-    // Run after initCDVPurchase has been scheduled
-    setTimeout(applyPatch, 50);
-    setTimeout(applyPatch, 500);
-    document.addEventListener('deviceready', function () { setTimeout(applyPatch, 50); }, false);
+    // Apply immediately using the local CdvPurchase namespace available at module evaluation time
+    if (typeof CdvPurchase !== 'undefined') patchStore(CdvPurchase.store);
+
+    // Fallback: re-apply after deviceready in case window.CdvPurchase is wired up later
+    document.addEventListener('deviceready', function () {
+        patchStore(window.CdvPurchase && window.CdvPurchase.store);
+    }, false);
 })();
 
 });

@@ -300,9 +300,9 @@
         XMLHttpRequest.prototype.open = function (method, url) {
           this._mockUrl = url;
           this._isMocked = isApiUrl(url || "");
-          if (!this._isMocked) {
-            _origXHROpen.apply(this, arguments);
-          }
+          // Always call native open() to keep XHR in OPENED state so that
+          // subsequent setRequestHeader() calls do not throw InvalidStateError.
+          _origXHROpen.apply(this, arguments);
         };
 
         XMLHttpRequest.prototype.send = function (body) {
