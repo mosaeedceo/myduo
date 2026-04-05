@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Error tracking injected first, so it can catch all errors -->
+    <script type="text/javascript">
+      window.lastErrors = []; // store last 5 errors
+      function addError(error) {
+        window.lastErrors.unshift(error);
+        if (window.lastErrors.length > 5) {
+          window.lastErrors.pop();
+        }
+      }
+
+      // Collect unhandled errors
+      window.onerror = function (msg, url, lineNo, columnNo, error) {
+        const ctx = `${lineNo || columnNo ? ` (line: ${lineNo}${columnNo ? `, column: ${columnNo}` : ""})` : ""}${
+          url ? ` at ${url}` : ""
+        }`;
+        const errMsg =
+          error && typeof error.message === "string"
+            ? `${error.message}${ctx}${error.stack ? `\nStack: ${error.stack}` : ""}`
+            : `${typeof msg === "string" ? msg : "Unknown error"}${ctx}`;
+
+        addError({ message: errMsg, timestamp: new Date().toISOString() });
+        return false;
+      };
+
+      // Collect unhandled promise rejections
+      window.onunhandledrejection = function (event) {
+        addError({
+          message: ((r) =>
+            r instanceof ErrorEvent
+              ? `${r.message || r.type} (in ${r.filename}:${r.lineno})`
+              : r instanceof Error
+              ? r.stack || r.message
+              : typeof r === "object"
+              ? JSON.stringify(r)
+              : String(r))(event.reason),
+          timestamp: new Date().toISOString()
+        });
+      };
+    </script>
+
+    <script type="text/javascript">
+      if (typeof globalThis === "undefined") {
+        // For browsers that do not support globalThis - android 9 webview for example
+        // this is needed for our react app to work on devices that do not support globalThis
+        (function () {
+          if (typeof window !== "undefined") {
+            window.globalThis = window;
+          }
+        })();
+      }
+    </script>
+
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta
+      name="viewport"
+      content="user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1,width=device-width"
+    />
+    <meta charset="utf-8" />
+    <meta name="theme-color" content="#FFFFFF" />
+    <link rel="icon" href="https://cdn.duocards.com/img/favicon.png" />
+    <link rel="apple-touch-icon" href="https://cdn.duocards.com/img/icon.png" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+Chettan+2:wght@700&family=Noto+Sans:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>DuoCards</title>
+    <style>
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        #loading-wrapper {
+          filter: invert(95%) hue-rotate(180deg) saturate(80%);
+        }
+        #title {
+          filter: invert(110%) hue-rotate(180deg) saturate(120%);
+        }
+      }
+    </style>
+  </head>
+  <body style="margin: 0">
+    <div id="root">
+      <div
+        id="loading-wrapper"
+        style="
+          font-family: Arial, Helvetica, sans-serif;
+          color: #0099dd;
+          height: 100vh;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          flex-direction: column;
+          background-color: #ffffff;
+        "
+      >
+        <img
+          id="title"
+          src="files/logo.svg"
+          alt="DuoCards"
+          width="180"
+          height="34"
+          style="opacity: 0; transition: all 1s ease-in, transform 0.5s ease; position: relative; top: 0"
+        />
+        <div
+          id="logo-loader"
+          style="
+            display: none;
+            margin-top: 32px;
+            width: 180px;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            text-align: center;
+          "
+        >
+          <div
+            id="progress-bar"
+            style="
+              width: 0;
+              height: 100%;
+              background: #0099dd;
+              border-radius: 4px;
+              transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+              position: absolute;
+              left: 0;
+              top: 0;
+            "
+          ></div>
+          <div
+            id="progress-percent"
+            style="
+              position: absolute;
+              inset: 0;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 8px;
+              color: #fff;
+            "
+          ></div>
+        </div>
+
+        <div
+          id="error"
+          style="
+            margin: 180px 20px 0;
+            position: absolute;
+            opacity: 0;
+            transition: opacity 3s ease-in;
+            color: #666;
+            font-size: 13px;
+            line-height: 1.5em;
+            text-align: center;
+            max-width: 320px;
+            font-family: 'Noto Sans', sans-serif;
+          "
+        >
+          <div style="margin-bottom: 20px">We're having trouble loading DuoCards app</div>
+
+          <ol style="text-align: left; margin: 16px 0; padding-left: 24px; color: #757575">
+            <li style="margin-bottom: 12px">Check internet connection</li>
+            <li style="margin-bottom: 12px">Tap refresh below</li>
+            <li style="margin-bottom: 12px">Disable VPN if enabled</li>
+            <li style="margin-bottom: 12px">Clear app data in device settings</li>
+            <li style="margin-bottom: 12px">Reinstall the app</li>
+          </ol>
+
+          <div style="margin-top: 32px">
+            <button
+              id="retry"
+              style="
+                width: 100%;
+                padding: 14px 24px;
+                font-size: 15px;
+                font-weight: 500;
+                text-align: center;
+                border-radius: 100px;
+                color: #fff;
+                border: none;
+                background-color: #0099dd;
+                cursor: pointer;
+                font-family: 'Noto Sans', sans-serif;
+                transition: all 0.2s ease;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+                position: relative;
+                overflow: hidden;
+              "
+              onmouseover="this.style.backgroundColor='#0088cc'; this.style.transform='scale(1.02)'"
+              onmouseout="this.style.backgroundColor='#0099dd'; this.style.transform='scale(1)'"
+              onclick="window.handleRetry(); this.innerHTML='Refreshing...'; this.style.opacity='0.9'"
+            >
+              Refresh App
+            </button>
+            <p>
+              Still having issues? Our friendly support team is ready at the
+              <a
+                href="#"
+                onclick="window.openHelpCenter(event)"
+                style="color: #0099dd; text-decoration: none; font-weight: 500; position: relative; padding-bottom: 1px"
+                onmouseover="this.style.borderBottom='1px solid #0099dd'"
+                onmouseout="this.style.borderBottom='none'"
+                >help center</a
+              >
+            </p>
+            <div
+              id="last-errors"
+              style="
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-height: 8px;
+                line-height: 8px;
+                font-size: 8px;
+              "
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <script type="text/javascript">
+        var JS_STORE_NAME = "jsStorage";
+        var JS_VERSION_KEY = "jsVersion";
+        var BASE_URL_KEY = "baseURL";
+        var DEFAULT_API_URL = "https://api.duocards.com";
+        var DEFAULT_BASE_URL = "https://app.duocards.com/static/app/main.chunk.js";
+
+        var getApiUrl = function () {
+          try {
+            var baseUrl = window.localStorage.getItem(BASE_URL_KEY);
+            if (!baseUrl || baseUrl === DEFAULT_BASE_URL) return DEFAULT_API_URL;
+            var url = new URL(baseUrl);
+            return url.protocol + "//" + url.hostname + ":4000";
+          } catch (e) {
+            return DEFAULT_API_URL;
+          }
+        };
+
+        window.getJSVersion = function () {
+          return window.localStorage.getItem(JS_VERSION_KEY) || "anticache-" + Date.now();
+        };
+
+        window.setJSVersion = function (jsVersion) {
+          try {
+            window.localStorage.setItem(JS_VERSION_KEY, jsVersion);
+          } catch (e) {
+            window.localStorage.removeItem(JS_VERSION_KEY);
+          }
+        };
+
+        window.getScriptUrl = function (version) {
+          const baseUrl = window.localStorage.getItem(BASE_URL_KEY) || DEFAULT_BASE_URL;
+          return baseUrl + "?v=" + version;
+        };
+
+        window.closeJsDB = function () {
+          if (window.jsDB) {
+            window.jsDB.close();
+            window.jsDB = undefined;
+          }
+        };
+
+        window.handleRetry = function () {
+          localStorage.clear();
+
+          // delete indexedDB databases
+          if (window.indexedDB) {
+            window.closeJsDB();
+
+            if ("databases" in window.indexedDB && typeof window.indexedDB.databases === "function") {
+              // src: https://stackoverflow.com/a/54764150/844628
+              window.indexedDB.databases().then((r) => {
+                for (var i = 0; i < r.length; i++) window.indexedDB.deleteDatabase(String(r[i].name));
+              });
+            } else {
+              window.indexedDB.deleteDatabase("jsDB");
+            }
+          }
+
+          window.safeReloadApp();
+        };
+
+        window.openHelpCenter = function (event) {
+          event.preventDefault();
+
+          const params = new URLSearchParams({
+            relatedTo: "App is not loading",
+            error: window.lastErrors ? JSON.stringify(window.lastErrors) : "",
+            version: window.appversion,
+            jsVersion: window.getJSVersion()
+          });
+
+          // redirect setup in WP plugin Redirection
+          const url = `https://duocards.com/app-error?${params}`;
+
+          // Try to use Cordova InAppBrowser if available
+          if (window.cordova && window.cordova.InAppBrowser) {
+            window.cordova.InAppBrowser.open(url, "_system");
+          } else {
+            window.location.href = url;
+          }
+        };
+
+        window.safeReloadApp = function () {
+          window.location.href = "/";
+        };
+
+        window.logAppLoad = function (ok) {
+          const deviceId = window.device
+            ? `${window.device.model}-${window.device.uuid}`
+            : `random_${Math.random().toString(36).substring(2, 9)}`;
+
+          const lastErrors =
+            window.lastErrors && window.lastErrors.length > 0 ? JSON.stringify(window.lastErrors) : undefined;
+
+          fetch(getApiUrl() + "/log-app-load", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              status: ok ? "success" : "fail",
+              deviceId,
+              details: {
+                appVersion: window.appversion,
+                jsVersion: window.getJSVersion(),
+                lastErrors
+              }
+            })
+          }).catch((e) => {
+            console.error("logAppLoad failed: ", e);
+            addError({ message: "logAppLoad failed: " + e.message, timestamp: new Date().toISOString() });
+          });
+        };
+      </script>
+
+      <script type="text/javascript">
+        // Initial fade in
+        setTimeout(function () {
+          var titleEl = document.getElementById("title");
+          if (titleEl) {
+            titleEl.style.opacity = 1;
+            // Start pulse animation after fade in
+            titleEl.style.animation = "pulse 2s infinite";
+          }
+        });
+
+        // Error dialog and final transform
+        setTimeout(function () {
+          function showError() {
+            const errEl = document.getElementById("error");
+            const titleEl = document.getElementById("title");
+            const lastErrorsEl = document.getElementById("last-errors");
+
+            window.logAppLoad(errEl ? false : true);
+
+            if (lastErrorsEl) {
+              lastErrorsEl.textContent = window.lastErrors.map((e) => e.message).join("\n");
+            }
+
+            if (errEl && titleEl) {
+              titleEl.style.animation = "none";
+              setTimeout(() => {
+                titleEl.style.transform = "translateY(-120px)";
+              }, 50);
+              setTimeout(() => {
+                errEl.style.opacity = "0";
+                errEl.style.transform = "translateY(20px)";
+                setTimeout(() => {
+                  errEl.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+                  errEl.style.opacity = "1";
+                  errEl.style.transform = "translateY(0)";
+                }, 100);
+              }, 400);
+            }
+          }
+          (function poll() {
+            var loader = document.getElementById("logo-loader");
+            if (!loader || loader.style.display === "none") return showError();
+            setTimeout(poll, 2000);
+          })();
+        }, 15000);
+
+        // Do not change this line. The app version will be automatically updated after the platform is prepared
+        window.appversion = 12015;
+      </script>
+    </div>
+
+    <script type="text/javascript">
+      (function (document, window) {
+        "use strict";
+
+        var devicereadyPromise = new Promise(function (resolve) {
+          document.addEventListener("deviceready", resolve, false);
+        });
+
+        function executeAppJs(jsText) {
+          var formatError = function (error) {
+            return "failed to execute app bundle: " + (error && error.message ? error.message : String(error));
+          };
+
+          return devicereadyPromise.then(function () {
+            try {
+              eval(jsText);
+            } catch (error) {
+              throw new Error(formatError(error));
+            }
+          });
+        }
+
+        function setLoaderVisible(isVisible) {
+          var loader = document.getElementById("logo-loader");
+          if (loader) loader.style.display = isVisible ? "block" : "none";
+        }
+
+        function loadModuleAppScript(entryUrl, reason) {
+          function buildModuleBootstrapLines() {
+            var lines = [];
+              const viteBaseUrl = new URL(entryUrl).origin;
+              lines.push("(function () {");
+              lines.push("  var loadEntry = function () { return import(" + JSON.stringify(entryUrl) + "); };");
+              lines.push("  import(" + JSON.stringify(viteBaseUrl + "/@vite/client") + ");");
+              lines.push("  import(" + JSON.stringify(viteBaseUrl + "/@react-refresh") + ").then(function (m) {");
+              lines.push("    var RefreshRuntime = m && (m.default || m);");
+              lines.push("    if (RefreshRuntime && RefreshRuntime.injectIntoGlobalHook) {");
+              lines.push("      RefreshRuntime.injectIntoGlobalHook(window);");
+              lines.push("    }");
+              lines.push("    window.$RefreshReg$ = function () {};");
+              lines.push("    window.$RefreshSig$ = function () { return function (type) { return type; }; };");
+              lines.push("    window.__vite_plugin_react_preamble_installed__ = true;");
+              lines.push("    return loadEntry();");
+              lines.push("  }).catch(function () {");
+              lines.push("    window.$RefreshReg$ = function () {};");
+              lines.push("    window.$RefreshSig$ = function () { return function (type) { return type; }; };");
+              lines.push("    window.__vite_plugin_react_preamble_installed__ = true;");
+              lines.push("    return loadEntry();");
+              lines.push("  });");
+              lines.push("})();");
+            return lines;
+          }
+
+          var showLoaderTimeout = setTimeout(function () {
+            setLoaderVisible(true);
+          }, 3000);
+
+          var hideLoaderTimeout = setTimeout(function () {
+            setLoaderVisible(false);
+            logError(reason, new Error("module script load timeout"));
+          }, 30000);
+
+          var onError = function (e) {
+            clearTimeout(showLoaderTimeout);
+            clearTimeout(hideLoaderTimeout);
+            setLoaderVisible(false);
+            logError(reason, e);
+          };
+
+          devicereadyPromise
+            .then(function () {
+              var moduleLines = buildModuleBootstrapLines();
+
+              var script = document.createElement("script");
+              script.type = "module";
+              script.textContent = moduleLines.join("\n");
+              script.onload = function () {
+                clearTimeout(showLoaderTimeout);
+                clearTimeout(hideLoaderTimeout);
+                setLoaderVisible(false);
+              };
+              script.onerror = onError;
+              document.head.appendChild(script);
+            })
+            .catch(onError);
+        }
+
+        function attachCordovaScriptToHead() {
+          var newScript = document.createElement("script");
+          document.head.appendChild(newScript);
+          // Always load from root "/" - if React is on a different route,
+          // the page needs to reference cordova.js from root to ensure proper loading
+          newScript.src = "/cordova.js";
+          newScript.onerror = function (e) {
+            logError("cordova.js error", e);
+          };
+        }
+
+        function storeFreshJsInIndexedDB(jsRes, db, jsVersion) {
+          const idbData = { name: "js", version: jsVersion, js: jsRes };
+          const put = db.transaction([JS_STORE_NAME], "readwrite").objectStore(JS_STORE_NAME).put(idbData);
+          put.onerror = function (e) {
+            logError("storeFreshJsInIndexedDB: IDB put failed", e);
+          };
+          put.onsuccess = function (e) {
+            window.setJSVersion(jsVersion);
+          };
+        }
+
+        function loadScriptWithProgress(src, options) {
+          options = options || {};
+          var onLoad = options.onLoad;
+          var onError = options.onError;
+          var onProgress = options.onProgress;
+          try {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", src, true);
+            xhr.responseType = "text";
+
+            var progressTimeout;
+            var clearProgressTimeout = function () {
+              if (progressTimeout) {
+                clearTimeout(progressTimeout);
+                progressTimeout = null;
+              }
+            };
+
+            var resetProgressTimeout = function () {
+              clearProgressTimeout();
+              progressTimeout = setTimeout(
+                function () {
+                  if (onError) onError(new Error("load script timeout: no progress: " + src));
+                },
+                runningFromDefaultUrl ? 30000 : 10000
+              );
+            };
+
+            resetProgressTimeout();
+
+            xhr.onprogress = function (e) {
+              resetProgressTimeout(); // Reset timeout on each progress event
+              if (onProgress) onProgress(e);
+            };
+            xhr.onload = function () {
+              clearProgressTimeout();
+              if (xhr.status >= 200 && xhr.status < 300) {
+                if (onLoad) onLoad(xhr.responseText);
+              } else {
+                if (onError) onError(new Error("bad HTTP status: " + xhr.status));
+              }
+            };
+            xhr.onerror = function () {
+              clearProgressTimeout();
+              if (onError) onError(new Error("network error (no HTTP response)"));
+            };
+            xhr.send();
+          } catch (e) {
+            if (onError) onError(e);
+          }
+        }
+
+        function getJsVersionTimestamp(ver) {
+          if (typeof ver !== "string") return NaN;
+
+          // Try numeric part after last dash (handles "anticache-<unixTimestamp>")
+          const dashIdx = ver.lastIndexOf("-");
+          if (dashIdx !== -1) {
+            const num = Number(ver.substring(dashIdx + 1));
+            if (!Number.isNaN(num) && num > 0) return num;
+          }
+
+          // Fallback to ISO date parsing (e.g. "2025-06-18T15:21:41.329Z")
+          const isoMs = Date.parse(ver);
+          return Number.isNaN(isoMs) ? NaN : isoMs;
+        }
+
+        function checkIfCachedJSIsTooOld(jsVersion) {
+          const versionTs = getJsVersionTimestamp(jsVersion);
+          if (Number.isNaN(versionTs)) return true; // Unable to parse → treat as too old
+
+          const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000; // 30 days
+          return versionTs < oneMonthAgo;
+        }
+
+        attachCordovaScriptToHead(); // as soon as possible
+
+        var jsVersion = window.getJSVersion();
+        window.setJSVersion(jsVersion);
+
+        var baseUrl = window.localStorage.getItem(BASE_URL_KEY) || DEFAULT_BASE_URL;
+
+        const isModuleEntryUrl = baseUrl.endsWith("index.tsx") && !baseUrl.includes("app.duocards.com");
+        if (isModuleEntryUrl) {
+          loadModuleAppScript(baseUrl, "Module entry load failed");
+          return;
+        }
+
+        var runningFromDefaultUrl = baseUrl === DEFAULT_BASE_URL;
+
+        if (!window.indexedDB) {
+          const reason = "indexedDB not supported";
+          loadAppScript(jsVersion, reason, undefined);
+          logError(reason);
+          return;
+        }
+
+        const request = indexedDB.open("jsDB", 1);
+        request.onupgradeneeded = (e) => {
+          const objectStore = request.result.createObjectStore(JS_STORE_NAME, { keyPath: "name" });
+        };
+        request.onerror = function (e) {
+          const reason = "IDB open failed";
+          loadAppScript(jsVersion, reason, undefined);
+          logError(reason, e);
+        };
+        request.onblocked = function (e) {
+          const reason = "IDB open blocked";
+          loadAppScript(jsVersion, reason, undefined);
+          logError(reason, e);
+        };
+        request.onsuccess = function (e) {
+          let db;
+          let getRequest;
+          let getTransaction;
+          try {
+            db = e.target.result;
+            window.jsDB = db; // keep glogaly, because every open create new connection and blocking events could happen
+
+            if (!db.objectStoreNames.contains(JS_STORE_NAME)) {
+              // object store not found → delete DB -> reload app and start over
+              const reason = "object store not found";
+              window.closeJsDB(); // close connection before deleteDatabase, otherwise might be blocked
+
+              const del = window.indexedDB.deleteDatabase("jsDB");
+              del.onerror = function (e) {
+                logError("deleteDatabase failed", e);
+                loadAppScript(jsVersion, reason + " - deleteDatabase failed");
+              };
+              del.onblocked = function () {
+                logError("deleteDatabase blocked");
+                loadAppScript(jsVersion, reason + " - deleteDatabase blocked");
+              };
+              del.onsuccess = function () {
+                window.safeReloadApp(); // fresh reload after delete
+              };
+              return;
+            }
+
+            getTransaction = db.transaction([JS_STORE_NAME], "readwrite");
+            getRequest = getTransaction.objectStore(JS_STORE_NAME).get("js");
+
+            getRequest.onerror = function (e) {
+              const reason = "IDB getRequest failed";
+              loadAppScript(jsVersion, reason, undefined);
+              logError(reason, e);
+            };
+          } catch (e) {
+            const reason = "transaction failed";
+            loadAppScript(jsVersion, reason, undefined); // not passing db, if failed...
+            logError(reason, e);
+            return;
+          }
+
+          getRequest.onsuccess = (event) => {
+            const dbItem = event.target.result;
+            // in ReleaseUpdater.tsx we check if the app is online and up to date, otherwise js of jsStorage in indexedDB is cleared and fresh JS is fetched here
+            const js = dbItem && dbItem.js;
+            const jsVersionInDb = dbItem && dbItem.version;
+            if (!js || !jsVersionInDb) {
+              loadAppScript(jsVersion, "No JS in IndexedDB", db);
+              return;
+            }
+
+            if (checkIfCachedJSIsTooOld(jsVersionInDb)) {
+              loadAppScript(jsVersion, "Cached JS is too old", db);
+              return;
+            }
+
+            if (!runningFromDefaultUrl) {
+              loadAppScript(jsVersion, "Redownloading app - dev mode", db);
+              return;
+            }
+
+            var isOnline = function () {
+              return typeof navigator.onLine === "boolean" ? navigator.onLine : true;
+            };
+
+            var redownloadAppScript = function (reason) {
+              loadAppScript(jsVersion, reason, db, true); // skipping script execution, preventing multiple executions
+            };
+
+            executeAppJs(js)
+              .then(() => {
+                setTimeout(() => {
+                  if (!window.reactUpdaterLoaded && isOnline()) {
+                    redownloadAppScript("Redownloading app - updater not loaded");
+                  }
+                }, 1000);
+              })
+              .catch((e) => {
+                logError("executeAppJs failed when loading cached JS", e);
+                if (isOnline()) redownloadAppScript("Redownloading app - eval failed");
+              });
+          };
+
+          // fetch fresh JS if request is pending for more than 3 seconds,
+          // this is the case when onsuccess event is not fired
+          setTimeout(() => {
+            if (getRequest && getRequest.readyState === "pending") {
+              var reason = "APP INIT: IndexedDB request pending for more than 3 seconds";
+              loadAppScript(jsVersion, reason, db);
+              logError(reason);
+            }
+          }, 3000);
+        };
+
+        function logError(reason, error) {
+          const errorMsg = error
+            ? error instanceof Error
+              ? error.stack || error.message
+              : typeof error === "object"
+              ? JSON.stringify(error)
+              : String(error)
+            : "";
+          addError({ message: reason + " " + errorMsg, timestamp: new Date().toISOString() });
+        }
+
+        function loadAppScript(jsVersion, reason, db, skipScriptExecution) {
+          // Show loader after 3s if not already visible
+          var showLoaderTimeout = setTimeout(function () {
+            setLoaderVisible(true);
+          }, 3000);
+
+          var onError = function (e) {
+            clearTimeout(showLoaderTimeout);
+            setLoaderVisible(false);
+            logError(reason, e);
+          };
+
+          var onLoad = function (jsRes) {
+            clearTimeout(showLoaderTimeout);
+            setLoaderVisible(false);
+
+            var handleSuccess = function () {
+              if (db) storeFreshJsInIndexedDB(jsRes, db, jsVersion);
+            };
+
+            skipScriptExecution ? handleSuccess() : executeAppJs(jsRes).then(handleSuccess).catch(onError);
+          };
+
+          var scriptUrl = window.getScriptUrl(jsVersion);
+          loadScriptWithProgress(scriptUrl, {
+            onLoad,
+            onError,
+            onProgress: function (e) {
+              var bar = document.getElementById("progress-bar");
+              var percentText = document.getElementById("progress-percent");
+              if (e.lengthComputable && bar && percentText) {
+                var percent = Math.round((e.loaded / e.total) * 100);
+                bar.style.width = percent + "%";
+                percentText.textContent = percent + "%";
+              }
+            }
+          });
+        }
+      })(document, window);
+    </script>
+  </body>
+</html>
