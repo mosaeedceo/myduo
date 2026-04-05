@@ -81,6 +81,16 @@
 
         var MOCK_EXT = { releaseId: RELEASE_ID };
 
+        var MOCK_USER = {
+          id: MOCK_VIEWER.id,
+          name: MOCK_VIEWER.name,
+          email: MOCK_VIEWER.email,
+          token: MOCK_TOKEN,
+          emailVerified: MOCK_VIEWER.emailVerified,
+          isPremium: true,
+          plan: "premium"
+        };
+
         function isApiUrl(url) {
           try { return new URL(url).hostname === API_HOST; } catch (e) { return false; }
         }
@@ -314,50 +324,6 @@
       })();
     </script>
 
-    <script type="text/javascript">
-      (function () {
-        function patchStore() {
-          var store = window.CdvPurchase && window.CdvPurchase.store;
-          if (!store) return;
-
-          var _origInit = store.initialize.bind(store);
-          store.initialize = function () {
-            try { store._readyCallbacks && store._readyCallbacks.trigger && store._readyCallbacks.trigger("stub"); } catch (e) {}
-            try { store.receiptsReadyCallbacks && store.receiptsReadyCallbacks.trigger && store.receiptsReadyCallbacks.trigger(); } catch (e) {}
-            try { store.receiptsVerifiedCallbacks && store.receiptsVerifiedCallbacks.trigger && store.receiptsVerifiedCallbacks.trigger(); } catch (e) {}
-            return Promise.resolve([]);
-          };
-
-          store.owned = function () { return true; };
-          store.canPurchase = function () { return false; };
-
-          var _origOrder = store.order;
-          store.order = function (offer, additionalData) {
-            return Promise.reject({ isError: true, code: 6777008, message: "Purchases disabled" });
-          };
-
-          var _origGet = store.get;
-          store.get = function (idOrProduct, platform) {
-            var p = _origGet ? _origGet.call(store, idOrProduct, platform) : undefined;
-            if (p) {
-              try {
-                Object.defineProperty(p, "owned", { get: function () { return true; }, configurable: true });
-                p.purchasing = false;
-              } catch (e) {}
-            }
-            return p;
-          };
-        }
-
-        document.addEventListener("deviceready", function () {
-          setTimeout(patchStore, 50);
-          setTimeout(patchStore, 500);
-        }, false);
-
-        setTimeout(patchStore, 200);
-        setTimeout(patchStore, 1000);
-      })();
-    </script>
     <!-- Error tracking injected first, so it can catch all errors -->
     <script type="text/javascript">
       window.lastErrors = []; // store last 5 errors

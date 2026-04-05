@@ -7008,11 +7008,21 @@ var CdvPurchase;
         // All products appear owned
         store.owned = function () { return true; };
 
-        // Disable new purchases
-        store.canPurchase = function () { return false; };
-        store.order = function () {
-            return Promise.reject({ isError: true, code: 6777008, message: 'Purchases disabled' });
+        // Allow purchase flow — resolve immediately as if purchase succeeded
+        store.canPurchase = function () { return true; };
+        store.order = function (offer) {
+            var mockTransaction = {
+                transactionId: 'mock-txn-' + Date.now(),
+                state: 'approved',
+                products: [{ id: (offer && offer.id) || 'com.duocards.premium', quantity: 1 }],
+                finish: function () { return Promise.resolve(); }
+            };
+            try {
+                store.receiptsVerifiedCallbacks && store.receiptsVerifiedCallbacks.trigger && store.receiptsVerifiedCallbacks.trigger();
+            } catch (e) {}
+            return Promise.resolve(mockTransaction);
         };
+        store.finish = function () { return Promise.resolve(); };
 
         // Patch store.get to set owned on returned products
         var _origGet = store.get;
