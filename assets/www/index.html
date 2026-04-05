@@ -15,6 +15,349 @@
         };
       })();
     </script>
+
+    <script type="text/javascript">
+      (function () {
+        var API_HOST = "api.duocards.com";
+        var RELEASE_ID = "mock-release-1";
+
+        var MOCK_TOKEN = "mock-auth-token-abc123xyz";
+        var MOCK_VIEWER = {
+          id: "mock-user-001",
+          name: "Demo User",
+          bio: null,
+          picture: null,
+          email: "demo@duocards.com",
+          emailVerified: true,
+          admin: false,
+          seenHints: [
+            { name: "petMammoth2", when: "2024-01-01T00:00:00Z" },
+            { name: "noCards3", when: "2024-01-01T00:00:00Z" },
+            { name: "firstLoop", when: "2024-01-01T00:00:00Z" },
+            { name: "firstFew", when: "2024-01-01T00:00:00Z" }
+          ],
+          timezone: "Europe/Prague",
+          timezonePrices: [],
+          appLang: "en",
+          fcmId: null,
+          coachLevel: 5,
+          deviceId: "mock-device-001",
+          deviceOs: "android",
+          installReferrer: null,
+          affiliate: null,
+          gId: null,
+          appleId: null,
+          streakTime: 0,
+          streakFreeze: 0,
+          streakFreezeXps: 0,
+          verifiedBeforeDays: 365,
+          createdBeforeDays: 365,
+          createdBeforeSeconds: 31536000,
+          showSubsKickDialog: false,
+          ttsToken: null,
+          inviter: null,
+          subscriptions: [{
+            transactionId: "mock-txn-001",
+            timeToExpire: "2099-12-31T00:00:00Z",
+            isTrial: false,
+            platform: "android",
+            storeId: "com.duocards.premium",
+            family: "PREMIUM",
+            cancelled: false,
+            famembers: []
+          }],
+          flags: [],
+          defaultLanguages: [{ target: "de", native: "en" }],
+          decks: [],
+          xps: {
+            today: 0,
+            todayExtra: 0,
+            total: 1000,
+            currentStreak: 30,
+            yesterdayLostStreak: false,
+            days: []
+          }
+        };
+
+        var MOCK_EXT = { releaseId: RELEASE_ID };
+
+        function isApiUrl(url) {
+          try { return new URL(url).hostname === API_HOST; } catch (e) { return false; }
+        }
+
+        function getOperationName(url, body) {
+          try {
+            var urlObj = new URL(url);
+            var opFromParam = urlObj.searchParams.get("operationName");
+            if (opFromParam) return opFromParam;
+            var firstKey = urlObj.searchParams.keys().next().value;
+            if (firstKey && firstKey !== "variables" && firstKey !== "extensions" && firstKey !== "query") {
+              return firstKey;
+            }
+          } catch (e) {}
+          if (!body) return "";
+          try {
+            var parsed = typeof body === "string" ? JSON.parse(body) : body;
+            return (parsed && parsed.operationName) || "";
+          } catch (e) { return ""; }
+        }
+
+        function mockGraphQLResponse(operationName) {
+          console.log("[MOCK-GQL]", operationName);
+
+          if (operationName === "PreLoginQuery") {
+            return {
+              data: {
+                preLogin: {
+                  token: MOCK_TOKEN,
+                  email: MOCK_VIEWER.email,
+                  prefillType: "USER",
+                  prefillEmail: MOCK_VIEWER.email,
+                  users: [{
+                    email: MOCK_VIEWER.email,
+                    flamesCount: 1000,
+                    loginMethod: "EMAIL",
+                    lastLoginAt: "2024-01-01T00:00:00Z",
+                    subscription: "PREMIUM"
+                  }]
+                }
+              },
+              extensions: MOCK_EXT
+            };
+          }
+
+          if (operationName === "viewerQuery" || operationName === "userSaleQuery" ||
+              operationName === "viewerProgressQuery") {
+            return { data: { viewer: MOCK_VIEWER }, extensions: MOCK_EXT };
+          }
+
+          if (operationName === "i18nextQuery") {
+            return {
+              data: {
+                node: {
+                  __typename: "Source",
+                  id: "mock-source-001",
+                  sCards: [
+                    { front: "Hello", hint: null, back: { value: "Hello", id: "mock-scard-back-001" }, id: "mock-scard-001" },
+                    { front: "Add", hint: null, back: { value: "Add", id: "mock-scard-back-002" }, id: "mock-scard-002" },
+                    { front: "Learn", hint: null, back: { value: "Learn", id: "mock-scard-back-003" }, id: "mock-scard-003" },
+                    { front: "Continue", hint: null, back: { value: "Continue", id: "mock-scard-back-004" }, id: "mock-scard-004" },
+                    { front: "Next", hint: null, back: { value: "Next", id: "mock-scard-back-005" }, id: "mock-scard-005" }
+                  ]
+                }
+              },
+              extensions: MOCK_EXT
+            };
+          }
+
+          if (operationName === "cardsChangedSinceQuery") {
+            return { data: { viewer: { id: MOCK_VIEWER.id, cardsChangedSince: [] } }, extensions: MOCK_EXT };
+          }
+
+          if (operationName === "editUserMutation") {
+            return {
+              data: {
+                editUserFields: {
+                  timezone: MOCK_VIEWER.timezone,
+                  appLang: MOCK_VIEWER.appLang,
+                  fcmId: MOCK_VIEWER.fcmId,
+                  coachLevel: MOCK_VIEWER.coachLevel,
+                  deviceId: MOCK_VIEWER.deviceId,
+                  deviceOs: MOCK_VIEWER.deviceOs,
+                  installReferrer: MOCK_VIEWER.installReferrer,
+                  streakTime: MOCK_VIEWER.streakTime,
+                  streakFreeze: MOCK_VIEWER.streakFreeze,
+                  streakFreezeXps: MOCK_VIEWER.streakFreezeXps,
+                  inviter: MOCK_VIEWER.inviter,
+                  defaultLanguages: MOCK_VIEWER.defaultLanguages,
+                  id: MOCK_VIEWER.id
+                }
+              },
+              extensions: MOCK_EXT
+            };
+          }
+
+          if (operationName === "useGetLangTranslatesQuery") {
+            return { data: { langTranslates: [] }, extensions: MOCK_EXT };
+          }
+
+          if (operationName === "viewerFriendsQuery") {
+            return {
+              data: {
+                viewer: {
+                  id: MOCK_VIEWER.id,
+                  friends: { edges: [] }
+                }
+              },
+              extensions: MOCK_EXT
+            };
+          }
+
+          if (operationName === "setFlagMutation") {
+            return {
+              data: {
+                setUserFlag: {
+                  flags: MOCK_VIEWER.flags,
+                  id: MOCK_VIEWER.id
+                }
+              },
+              extensions: MOCK_EXT
+            };
+          }
+
+          if (operationName === "createDeckMutation") {
+            var newDeck = {
+              id: "deck-mock-" + Date.now(),
+              name: "My Deck",
+              target: "de",
+              native: "en",
+              front: "en",
+              back: "de",
+              bothDirections: false,
+              private: false,
+              deletedAt: null,
+              description: null,
+              picture: null,
+              cards: { edges: [] },
+              stats: { total: 0, known: 0, unknown: 0, unseen: 0, completed: false }
+            };
+            return {
+              data: { createDeck: { viewer: Object.assign({}, MOCK_VIEWER, { decks: [newDeck] }) } },
+              extensions: MOCK_EXT
+            };
+          }
+
+          if (operationName === "saveCardStateMutation" || operationName === "recordLogEntryMutation" ||
+              operationName === "recordXpEntryMutation" || operationName === "HintMutation" ||
+              operationName === "usePreloadCardsDataMutation" || operationName === "useDBLogMutation") {
+            return { data: {}, extensions: MOCK_EXT };
+          }
+
+          if (operationName === "useTranslatesQuery") {
+            return { data: { translations: [] }, extensions: MOCK_EXT };
+          }
+
+          return { data: {}, extensions: MOCK_EXT };
+        }
+
+        function mockRestResponse(url, path) {
+          var authPaths = ["/auth", "/login", "/register", "/signup", "/me", "/user", "/account", "/profile", "/session", "/token"];
+          for (var i = 0; i < authPaths.length; i++) {
+            if (path.indexOf(authPaths[i]) !== -1) {
+              return Object.assign({ success: true, ok: true, status: "ok", releaseId: RELEASE_ID }, MOCK_USER);
+            }
+          }
+          var premiumPaths = ["/subscription", "/purchase", "/plan", "/premium", "/billing", "/payment", "/order"];
+          for (var j = 0; j < premiumPaths.length; j++) {
+            if (path.indexOf(premiumPaths[j]) !== -1) {
+              return { success: true, ok: true, active: true, status: "active", plan: "premium", isPremium: true, releaseId: RELEASE_ID };
+            }
+          }
+          return { success: true, ok: true, data: [], results: [], items: [], total: 0, releaseId: RELEASE_ID };
+        }
+
+        function mockResponseBody(url, requestBody) {
+          var path = "";
+          try { path = new URL(url).pathname.toLowerCase(); } catch (e) {}
+
+          if (path.indexOf("graphql") !== -1) {
+            var opName = getOperationName(url, requestBody);
+            return mockGraphQLResponse(opName);
+          }
+          return mockRestResponse(url, path);
+        }
+
+        var _origFetch = window.fetch.bind(window);
+        window.fetch = function (input, init) {
+          var url = typeof input === "string" ? input : (input && input.url) || "";
+          if (isApiUrl(url)) {
+            var reqBody = init && init.body;
+            var opName = getOperationName(url, reqBody);
+            console.log("[MOCK-FETCH]", url, opName || "(no op)");
+            var body = mockResponseBody(url, reqBody);
+            var json = JSON.stringify(body);
+            return Promise.resolve(new Response(json, {
+              status: 200,
+              headers: { "Content-Type": "application/json" }
+            }));
+          }
+          return _origFetch(input, init);
+        };
+
+        var _origXHROpen = XMLHttpRequest.prototype.open;
+        var _origXHRSend = XMLHttpRequest.prototype.send;
+
+        XMLHttpRequest.prototype.open = function (method, url) {
+          this._mockUrl = url;
+          this._isMocked = isApiUrl(url || "");
+          if (!this._isMocked) {
+            _origXHROpen.apply(this, arguments);
+          }
+        };
+
+        XMLHttpRequest.prototype.send = function (body) {
+          if (this._isMocked) {
+            var self = this;
+            var responseBody = JSON.stringify(mockResponseBody(self._mockUrl, body));
+            setTimeout(function () {
+              Object.defineProperty(self, "status", { get: function () { return 200; }, configurable: true });
+              Object.defineProperty(self, "readyState", { get: function () { return 4; }, configurable: true });
+              Object.defineProperty(self, "responseText", { get: function () { return responseBody; }, configurable: true });
+              Object.defineProperty(self, "response", { get: function () { return responseBody; }, configurable: true });
+              if (typeof self.onreadystatechange === "function") self.onreadystatechange();
+              if (typeof self.onload === "function") self.onload();
+            }, 0);
+            return;
+          }
+          _origXHRSend.apply(this, arguments);
+        };
+      })();
+    </script>
+
+    <script type="text/javascript">
+      (function () {
+        function patchStore() {
+          var store = window.CdvPurchase && window.CdvPurchase.store;
+          if (!store) return;
+
+          var _origInit = store.initialize.bind(store);
+          store.initialize = function () {
+            try { store._readyCallbacks && store._readyCallbacks.trigger && store._readyCallbacks.trigger("stub"); } catch (e) {}
+            try { store.receiptsReadyCallbacks && store.receiptsReadyCallbacks.trigger && store.receiptsReadyCallbacks.trigger(); } catch (e) {}
+            try { store.receiptsVerifiedCallbacks && store.receiptsVerifiedCallbacks.trigger && store.receiptsVerifiedCallbacks.trigger(); } catch (e) {}
+            return Promise.resolve([]);
+          };
+
+          store.owned = function () { return true; };
+          store.canPurchase = function () { return false; };
+
+          var _origOrder = store.order;
+          store.order = function (offer, additionalData) {
+            return Promise.reject({ isError: true, code: 6777008, message: "Purchases disabled" });
+          };
+
+          var _origGet = store.get;
+          store.get = function (idOrProduct, platform) {
+            var p = _origGet ? _origGet.call(store, idOrProduct, platform) : undefined;
+            if (p) {
+              try {
+                Object.defineProperty(p, "owned", { get: function () { return true; }, configurable: true });
+                p.purchasing = false;
+              } catch (e) {}
+            }
+            return p;
+          };
+        }
+
+        document.addEventListener("deviceready", function () {
+          setTimeout(patchStore, 50);
+          setTimeout(patchStore, 500);
+        }, false);
+
+        setTimeout(patchStore, 200);
+        setTimeout(patchStore, 1000);
+      })();
+    </script>
     <!-- Error tracking injected first, so it can catch all errors -->
     <script type="text/javascript">
       window.lastErrors = []; // store last 5 errors

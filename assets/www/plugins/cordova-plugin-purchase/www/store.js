@@ -6990,4 +6990,45 @@ var CdvPurchase;
     CdvPurchase.VerifiedReceipt = VerifiedReceipt;
 })(CdvPurchase || (CdvPurchase = {}));
 
+// Stub: make all products appear owned and skip native adapter initialization
+(function patchCdvPurchaseStore() {
+    function applyPatch() {
+        var store = window.CdvPurchase && window.CdvPurchase.store;
+        if (!store || store.__patched) return;
+        store.__patched = true;
+
+        // Override initialize to skip native adapters and immediately signal ready
+        store.initialize = function (platforms) {
+            try { store._readyCallbacks && store._readyCallbacks.trigger && store._readyCallbacks.trigger('stub'); } catch (e) {}
+            try { store.receiptsReadyCallbacks && store.receiptsReadyCallbacks.trigger && store.receiptsReadyCallbacks.trigger(); } catch (e) {}
+            try { store.receiptsVerifiedCallbacks && store.receiptsVerifiedCallbacks.trigger && store.receiptsVerifiedCallbacks.trigger(); } catch (e) {}
+            return Promise.resolve([]);
+        };
+
+        // All products appear owned
+        store.owned = function () { return true; };
+
+        // Disable new purchases
+        store.canPurchase = function () { return false; };
+        store.order = function () {
+            return Promise.reject({ isError: true, code: 6777008, message: 'Purchases disabled' });
+        };
+
+        // Patch store.get to set owned on returned products
+        var _origGet = store.get;
+        store.get = function (id, platform) {
+            var p = _origGet ? _origGet.call(store, id, platform) : undefined;
+            if (p) {
+                try { Object.defineProperty(p, 'owned', { get: function () { return true; }, configurable: true }); } catch (e) {}
+            }
+            return p;
+        };
+    }
+
+    // Run after initCDVPurchase has been scheduled
+    setTimeout(applyPatch, 50);
+    setTimeout(applyPatch, 500);
+    document.addEventListener('deviceready', function () { setTimeout(applyPatch, 50); }, false);
+})();
+
 });

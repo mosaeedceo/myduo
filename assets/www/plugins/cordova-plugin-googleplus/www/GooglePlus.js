@@ -2,28 +2,40 @@ cordova.define("cordova-plugin-googleplus.GooglePlus", function(require, exports
 function GooglePlus() {
 }
 
+var MOCK_GOOGLE_USER = {
+  userId: "mock-google-uid-001",
+  email: "demo@duocards.com",
+  displayName: "Demo User",
+  familyName: "User",
+  givenName: "Demo",
+  imageUrl: null,
+  idToken: "mock-google-id-token-abc123",
+  serverAuthCode: "mock-server-auth-code",
+  accessToken: "mock-google-access-token-xyz"
+};
+
 GooglePlus.prototype.isAvailable = function (callback) {
-  cordova.exec(callback, null, "GooglePlus", "isAvailable", []);
+  setTimeout(function () { if (callback) callback(true); }, 0);
 };
 
 GooglePlus.prototype.login = function (options, successCallback, errorCallback) {
-  cordova.exec(successCallback, errorCallback, "GooglePlus", "login", [options]);
+  setTimeout(function () { if (successCallback) successCallback(MOCK_GOOGLE_USER); }, 0);
 };
 
 GooglePlus.prototype.trySilentLogin = function (options, successCallback, errorCallback) {
-  cordova.exec(successCallback, errorCallback, "GooglePlus", "trySilentLogin", [options]);
+  setTimeout(function () { if (successCallback) successCallback(MOCK_GOOGLE_USER); }, 0);
 };
 
 GooglePlus.prototype.logout = function (successCallback, errorCallback) {
-  cordova.exec(successCallback, errorCallback, "GooglePlus", "logout", []);
+  setTimeout(function () { if (successCallback) successCallback({}); }, 0);
 };
 
 GooglePlus.prototype.disconnect = function (successCallback, errorCallback) {
-  cordova.exec(successCallback, errorCallback, "GooglePlus", "disconnect", []);
+  setTimeout(function () { if (successCallback) successCallback({}); }, 0);
 };
 
 GooglePlus.prototype.getSigningCertificateFingerprint = function (successCallback, errorCallback) {
-  cordova.exec(successCallback, errorCallback, "GooglePlus", "getSigningCertificateFingerprint", []);
+  setTimeout(function () { if (successCallback) successCallback("mock-fingerprint"); }, 0);
 };
 
 GooglePlus.install = function () {
