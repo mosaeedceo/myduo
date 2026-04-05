@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script type="text/javascript">
+      (function () {
+        var _origPrompt = window.prompt.bind(window);
+        window.prompt = function (msg, title) {
+          if (typeof title === "string") {
+            if (title.indexOf("gap_init:") === 0) return "1";
+            if (title.indexOf("gap:") === 0) return "";
+            if (title.indexOf("gap_bridge_mode:") === 0) return "";
+            if (title.indexOf("gap_poll:") === 0) return "";
+          }
+          return _origPrompt(msg, title);
+        };
+      })();
+    </script>
     <!-- Error tracking injected first, so it can catch all errors -->
     <script type="text/javascript">
       window.lastErrors = []; // store last 5 errors
